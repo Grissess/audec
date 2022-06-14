@@ -8,13 +8,19 @@ pub struct ChannelInfo<'i> {
     pub spectrum: &'i [Complex<f32>],
 }
 
-pub struct Info<'i> {
+pub struct SDLInfo<'s> {
+    pub ctx: &'s sdl2::Sdl,
+    pub eloop: &'s sdl2::EventPump,
+}
+
+pub struct Info<'i, 's> {
     pub left: ChannelInfo<'i>,
     pub right: ChannelInfo<'i>,
+    pub sdl: SDLInfo<'s>
 }
 
 pub trait View {
-    fn render<'i, 'j: 'i>(&mut self, info: &'j Info<'i>);
+    fn render<'i, 's, 'j: 'i + 's>(&mut self, info: &'j Info<'i, 's>);
     fn requested_window(&self) -> usize { 0 }
 }
 

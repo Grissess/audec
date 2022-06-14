@@ -9,7 +9,7 @@ pub struct Scope {
 }
 
 impl View for Scope {
-    fn render<'i, 'j: 'i>(&mut self, info: &'j Info<'i>) {
+    fn render<'i, 's, 'j: 'i + 's>(&mut self, info: &'j Info<'i, 's>) {
         self.view.set_draw_color(Color::RGB(0,0,0));
         self.view.clear();
         self.view.set_blend_mode(BlendMode::Add);

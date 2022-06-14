@@ -142,7 +142,12 @@ fn main() {
         .resizable()
         .build().expect("creating spec");
     let spec_can = spec_win.into_canvas().build().expect("creating spec canvas");
-    let mut spec = view::spec::Spec { view: spec_can };
+    let mut spec = view::spec::Spec {
+        view: spec_can,
+        db_bias: -5f32,
+        db_range: 30f32,
+        waterfall_sz: 0.8f32,
+    };
 
     let mut eloop = sdl.event_pump().expect("creating event loop");
     let mut deadline;
@@ -186,6 +191,10 @@ fn main() {
                 right: view::ChannelInfo {
                     samples: &st.right.scope[..],
                     spectrum: &st.right.spec[..],
+                },
+                sdl: view::SDLInfo {
+                    ctx: &sdl,
+                    eloop: &eloop,
                 },
             };
 
