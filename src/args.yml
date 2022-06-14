@@ -1,0 +1,49 @@
+name: audec
+version: "0.1"
+author: Grissess <grissess@nexusg.org>
+about: Precisely render audio analysis in real time
+args:
+    - fft-size:
+        long: fft-size
+        short: s
+        help: Size of the FFT window
+        takes_value: true
+    - fft-win:
+        long: fft-win
+        short: w
+        help: FFT window function (--list-win to list)
+        takes_value: true
+    - list-win:
+        long: list-win
+        help: Instead of doing anything else, show window functions
+    - aud-rate:
+        long: aud-rate
+        short: r
+        help: Sample rate of the audio stream
+        takes_value: true
+    - aud-period:
+        long: aud-period
+        short: p
+        help: Period size of the audio stream (lower for less latency but higher CPU usage)
+        takes_value: true
+    - aud-dev:
+        long: aud-dev
+        short: d
+        help: Audio device to use (--list-dev to list)
+        takes_value: true
+    - list-dev:
+        long: list-dev
+        help: Instead of doing anything else, show audio devices
+    - gfx-rate:
+        long: gfx-rate
+        short: f
+        help: Framerate of graphics updates (in Hz)
+        takes_value: true
+    - sco-width:
+        long: sco-width
+        help: Initial width of the scope window
+        takes_value: true
+    - sco-height:
+        long: sco-height
+        help: Initial height of the scope window
+        takes_value: true
