@@ -28,16 +28,25 @@ impl View for Spec {
         self.view.set_blend_mode(BlendMode::Add);
 
         // Move up the waterfall
-        {
-            let surf = self.view.window().surface(info.sdl.eloop).expect("getting surface ref");
-            let mut other_surf = self.view.window().surface(info.sdl.eloop).expect("getting second surface ref");
-            surf.blit(
-                Rect::new(0, 1, width, water_y),
-                &mut other_surf,
-                Rect::new(0, 0, width, water_y),
-            ).expect("blitting");
-            other_surf.finish().expect("finish mut");
-            surf.finish().expect("finish non-mut");
+        unsafe {
+            // Fuck it, VCR.
+            let ren = self.view.raw(); assert!(!ren.is_null());
+            let rt = sdl2_sys::SDL_GetRenderTarget(ren); assert!(!rt.is_null());
+            let mut fb: *mut libc::c_void = std::ptr::null_mut();
+            let mut pitch: libc::c_int = 0 as libc::c_int;
+            sdl2_sys::SDL_LockTexture(
+                rt,
+                std::ptr::null(),
+                std::mem::transmute(&fb),
+                std::mem::transmute(&pitch),
+            );
+            assert!(!fb.is_null()); assert!(pitch > 0);
+            let fb: *mut u8 = fb.cast();
+            let pitch = pitch as usize;
+
+            std::ptr::copy(fb.offset(pitch as isize), fb, pitch * water_y as usize);
+
+            sdl2_sys::SDL_UnlockTexture(rt);
         }
 
         for chan in 0 ..= 1 {

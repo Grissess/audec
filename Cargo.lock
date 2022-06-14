@@ -27,9 +27,11 @@ name = "audec"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "libc",
  "portaudio",
  "rustfft",
  "sdl2",
+ "sdl2-sys",
 ]
 
 [[package]]
