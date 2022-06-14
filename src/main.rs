@@ -147,6 +147,8 @@ fn main() {
         db_bias: -5f32,
         db_range: 30f32,
         waterfall_sz: 0.8f32,
+        waterfall_data: None,
+        waterfall_tex: std::ptr::null_mut(),
     };
 
     let mut eloop = sdl.event_pump().expect("creating event loop");

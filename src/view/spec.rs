@@ -1,15 +1,38 @@
 use super::{Info, View};
 
+use std::iter;
+
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::video::Window;
-use sdl2::render::{Canvas, BlendMode};
+use sdl2::video::{Window, WindowContext};
+use sdl2::render::{Canvas, BlendMode, Texture, TextureAccess, TextureCreator};
 
 pub struct Spec {
     pub view: Canvas<Window>,
     pub db_bias: f32,
     pub db_range: f32,
     pub waterfall_sz: f32,
+    pub waterfall_data: Option<Vec<u8>>,
+    pub waterfall_tex: *mut sdl2_sys::SDL_Texture,
+}
+
+impl Spec {
+    fn rebuild_texture(&mut self, w: usize, h: usize) {
+        self.waterfall_data = Some(
+            vec![0u8; w * h * 4]
+        );
+        let tc = self.view.texture_creator();
+        let mut wf = tc.create_texture(
+            None,
+            TextureAccess::Streaming,
+            w as u32, h as u32
+        ).expect("creating spec backing texture");
+        if !self.waterfall_tex.is_null() {
+            unsafe { sdl2_sys::SDL_DestroyTexture(self.waterfall_tex) };
+        }
+        self.waterfall_tex = wf.raw();
+        std::mem::forget(wf);
+    }
 }
 
 impl View for Spec {
@@ -23,31 +46,20 @@ impl View for Spec {
         let water_y = water_height - 1;
         let graph_height = height - water_height;
 
+        if let Some(d) = &self.waterfall_data {
+            if d.len() != width as usize * water_height as usize * 4 {
+                self.rebuild_texture(width as usize, water_height as usize);
+            }
+        } else {
+            self.rebuild_texture(width as usize, water_height as usize);
+        }
+
         self.view.set_draw_color(Color::RGB(0,0,0));
         self.view.fill_rect(Rect::new(0, water_y as i32, width, graph_height + 1)).expect("clearing");
         self.view.set_blend_mode(BlendMode::Add);
 
         // Move up the waterfall
-        unsafe {
-            // Fuck it, VCR.
-            let ren = self.view.raw(); assert!(!ren.is_null());
-            let rt = sdl2_sys::SDL_GetRenderTarget(ren); assert!(!rt.is_null());
-            let mut fb: *mut libc::c_void = std::ptr::null_mut();
-            let mut pitch: libc::c_int = 0 as libc::c_int;
-            sdl2_sys::SDL_LockTexture(
-                rt,
-                std::ptr::null(),
-                std::mem::transmute(&fb),
-                std::mem::transmute(&pitch),
-            );
-            assert!(!fb.is_null()); assert!(pitch > 0);
-            let fb: *mut u8 = fb.cast();
-            let pitch = pitch as usize;
-
-            std::ptr::copy(fb.offset(pitch as isize), fb, pitch * water_y as usize);
-
-            sdl2_sys::SDL_UnlockTexture(rt);
-        }
+        self.waterfall_data.as_mut().unwrap().copy_within(width as usize * 4 .., 0);
 
         for chan in 0 ..= 1 {
             let spec = if chan == 0 {
@@ -59,6 +71,7 @@ impl View for Spec {
             };
 
             let mut last_y = 0i32;
+            let wd_offset = water_y as usize * width as usize * 4;
             for x in 0 .. width {
                 // Since this is an RFFT, only half the spec is useful
                 let normx = x as f32 / width as f32;
@@ -76,12 +89,13 @@ impl View for Spec {
                 if specy < 0 { specy = 0; }
                 {
                     let dc = self.view.draw_color();
-                    self.view.set_draw_color(Color::RGBA(
-                            dc.r, dc.g, dc.b,
-                            ((1f32 - (specy as f32 / graph_height as f32)) * 255f32) as u8,
-                    ));
-                    self.view.draw_point((x as i32, water_y as i32)).expect("drawing");
-                    self.view.set_draw_color(dc);
+                    let mc = Color::RGBA(
+                        dc.r, dc.g, dc.b,
+                        ((1f32 - (specy as f32 / graph_height as f32)) * 255f32) as u8,
+                    );
+                    (&mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4]).copy_from_slice(
+                        &[mc.a, mc.r, mc.g, mc.b]
+                    );
                 }
                 if x > 0 {
                     self.view.draw_line(
@@ -92,6 +106,17 @@ impl View for Spec {
                 last_y = water_height as i32 + specy;
             }
         }
+
+        let mut wf: Texture<'static> = unsafe {
+            std::mem::transmute(self.waterfall_tex)
+        };
+        wf.update(None, &self.waterfall_data.as_ref().unwrap(), width as usize * 4);
+        self.view.copy(
+            &wf,
+            None,
+            Some(Rect::new(0, 0, width, water_height))
+        );
+        std::mem::forget(wf);
 
         self.view.set_blend_mode(BlendMode::None);
         self.view.present();
