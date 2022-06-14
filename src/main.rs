@@ -6,6 +6,7 @@ extern crate sdl2;
 
 mod window;
 mod fifo;
+mod view;
 
 use std::{iter, thread};
 use std::time::{Instant, Duration};
@@ -15,10 +16,10 @@ use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::event::Event;
 use fifo::Fifo;
+use view::View;
 
 const FPB: u32 = 256;
-const WIDTH: u32 = 800;
-const HEIGHT: u32 = 600;
+const MIN_SAMPS: usize = 256;
 
 #[derive(Debug, Clone)]
 struct ChannelInfo {
@@ -30,11 +31,6 @@ struct ChannelInfo {
 struct State {
     left: ChannelInfo,
     right: ChannelInfo,
-}
-
-fn normalize_centered(samp: f32, height: u32) -> i32 {
-    let hh = height / 2;
-    hh as i32 - (hh as f32 * samp) as i32
 }
 
 fn main() {
@@ -93,7 +89,7 @@ fn main() {
     println!("Settings: {:?}", settings);
     let state = Arc::new(Mutex::new({
         let ci = ChannelInfo {
-            scope: Fifo::new(WIDTH as usize),
+            scope: Fifo::new(init_width as usize),
             win: Fifo::new(1024),
         };
         State {
@@ -128,9 +124,7 @@ fn main() {
         .resizable()
         .build().expect("creating scope");
     let mut scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
-    scope_can.set_draw_color(Color::RGB(0,0,0));
-    scope_can.clear();
-    scope_can.present();
+    let mut scope = view::scope::Scope { view: scope_can };
 
     let mut eloop = sdl.event_pump().expect("creating event loop");
     let mut deadline;
@@ -139,55 +133,31 @@ fn main() {
     'main: loop {
         deadline = Instant::now() + rate;
 
-        scope_can.set_draw_color(Color::RGB(0,0,0));
-        scope_can.clear();
-        scope_can.set_blend_mode(BlendMode::Add);
-        let (width, height) = scope_can.output_size().expect("getting size");
-
-        for offs in 0..=1 {
-            let def_color = if offs == 0 {
-                Color::RGB(0,255,0)
-            } else {
-                Color::RGB(0,0,255)
-            };
-            let clip_color = if offs == 0 {
-                Color::RGB(255,0,0)
-            } else {
-                Color::RGB(255,0,255)
-            };
-            
-            let mut st = state.lock().unwrap();
-            let samps = if offs == 0 {
-                &mut st.left.scope
-            } else {
-                &mut st.right.scope
+        {
+            let st = state.lock().unwrap();
+            let info = view::Info {
+                left: view::ChannelInfo {
+                    samples: &st.left.scope[..],
+                    spectrum: &st.left.win[..],
+                },
+                right: view::ChannelInfo {
+                    samples: &st.right.scope[..],
+                    spectrum: &st.right.win[..],
+                },
             };
 
-            let mut last_samp = 0.0f32;
-            for (x, samp) in samps.iter().cloned().enumerate() {
-                if x > 0 {
-                    scope_can.set_draw_color(
-                        if samp > 1.0 || samp < -1.0 {
-                            clip_color
-                        } else {
-                            def_color
-                        }
-                    );
-                    scope_can.draw_line(
-                        ((x - 1) as i32, normalize_centered(last_samp, height)),
-                        (x as i32, normalize_centered(samp, height))
-                    ).expect("drawing");
-                }
-                last_samp = samp;
-            }
-            if width as usize != samps.size() {
-                samps.resize(width as usize);
-            }
+            scope.render(&info);
         }
 
-
-        scope_can.set_blend_mode(BlendMode::None);
-        scope_can.present();
+        {
+            let mut st = state.lock().unwrap();
+            let mut winsz = MIN_SAMPS;
+            winsz = std::cmp::max(winsz, scope.requested_window());
+            if winsz != st.left.scope.size() {
+                st.left.scope.resize(winsz);
+                st.right.scope.resize(winsz);
+            }
+        }
 
         for event in eloop.poll_iter() {
             match event {
