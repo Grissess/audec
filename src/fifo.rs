@@ -28,6 +28,8 @@ impl<T> Fifo<T> {
     pub fn resize(&mut self, newsz: usize) where T: Default + Clone {
         self.0.resize(newsz, Default::default())
     }
+
+    pub fn iter(&self) -> impl Iterator<Item=&T> { self.0.iter() }
 }
 
 impl<T> Deref for Fifo<T> {

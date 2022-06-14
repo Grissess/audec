@@ -1,8 +1,11 @@
 pub mod scope;
+pub mod spec;
+
+use rustfft::num_complex::Complex;
 
 pub struct ChannelInfo<'i> {
     pub samples: &'i [f32],
-    pub spectrum: &'i [f32],
+    pub spectrum: &'i [Complex<f32>],
 }
 
 pub struct Info<'i> {

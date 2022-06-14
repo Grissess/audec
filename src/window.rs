@@ -27,8 +27,17 @@ fn new_rect(sz: usize) -> Box<dyn Window> {
     ))
 }
 
+fn new_hann(sz: usize) -> Box<dyn Window> {
+    Box::new(GenericWindow(
+            (0 .. sz)
+            .map(|x| (std::f32::consts::PI * x as f32 / sz as f32).sin().powi(2))
+            .collect()
+    ))
+}
+
 pub fn windows() -> HashMap<String, fn(usize) -> Box<dyn Window>> {
     let mut map: HashMap<String, fn(usize) -> Box<dyn Window>> = HashMap::new();
     map.insert("rect".into(), new_rect);
+    map.insert("hann".into(), new_hann);
     map
 }

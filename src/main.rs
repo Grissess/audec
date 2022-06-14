@@ -15,6 +15,7 @@ use portaudio::stream::{Parameters, InputSettings, CallbackResult, InputCallback
 use sdl2::pixels::Color;
 use sdl2::render::BlendMode;
 use sdl2::event::Event;
+use rustfft::num_complex::Complex;
 use fifo::Fifo;
 use view::View;
 
@@ -25,6 +26,7 @@ const MIN_SAMPS: usize = 256;
 struct ChannelInfo {
     scope: Fifo<f32>,
     win: Fifo<f32>,
+    spec: Vec<Complex<f32>>,
 }
 
 #[derive(Debug)]
@@ -87,16 +89,24 @@ fn main() {
         }, fpb
     );
     println!("Settings: {:?}", settings);
+    let fft_size: usize = matches.value_of("fft-size").unwrap_or("1024").parse().expect("getting FFT size");
+    let mut fft_plan = rustfft::FftPlanner::new();
+    let fft = fft_plan.plan_fft_forward(fft_size);
+    let mut fft_scratch: Vec<Complex<f32>> = iter::repeat(Complex { re: 0.0, im: 0.0 })
+        .take(fft.get_inplace_scratch_len())
+        .collect();
     let state = Arc::new(Mutex::new({
         let ci = ChannelInfo {
             scope: Fifo::new(init_width as usize),
-            win: Fifo::new(1024),
+            win: Fifo::new(fft_size),
+            spec: iter::repeat(Complex { re: 0.0, im: 0.0 }).take(fft_size).collect(),
         };
         State {
             left: ci.clone(),
             right: ci,
         }
     }));
+    let win = windows.get(matches.value_of("fft-win").unwrap_or("hann")).expect("getting window function")(fft_size);
     let mut stream = pa.open_non_blocking_stream(
         settings,
         {
@@ -110,6 +120,7 @@ fn main() {
                     scratch.clear();
                     scratch.extend(buffer.chunks(2).map(|s| s[offs]));
                     ifo.scope.push(&scratch);
+                    ifo.win.push(&scratch);
                 }
                 CallbackResult::Continue
             }
@@ -123,8 +134,15 @@ fn main() {
         .position_centered()
         .resizable()
         .build().expect("creating scope");
-    let mut scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
+    let scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
     let mut scope = view::scope::Scope { view: scope_can };
+
+    let spec_win = sdl_video.window("spec", init_width, init_height)
+        .position_centered()
+        .resizable()
+        .build().expect("creating spec");
+    let spec_can = spec_win.into_canvas().build().expect("creating spec canvas");
+    let mut spec = view::spec::Spec { view: spec_can };
 
     let mut eloop = sdl.event_pump().expect("creating event loop");
     let mut deadline;
@@ -134,19 +152,45 @@ fn main() {
         deadline = Instant::now() + rate;
 
         {
+            let mut st = state.lock().unwrap();
+            for i in 0 ..= 1 {
+                let slc = if i == 0 {
+                    let cplx: Vec<Complex<f32>> = st.left.win.iter().map(|&x| Complex { re: x, im: 0.0 }).collect();
+                    st.left.spec.copy_from_slice(&cplx);
+                    &mut st.left.spec
+                } else {
+                    let cplx: Vec<Complex<f32>> = st.right.win.iter().map(|&x| Complex { re: x, im: 0.0 }).collect();
+                    st.right.spec.copy_from_slice(&cplx);
+                    &mut st.right.spec
+                };
+
+                for (pt, wv) in slc.iter_mut().zip(win.shape()) {
+                    *pt *= wv;
+                }
+
+                fft.process_with_scratch(slc, &mut fft_scratch);
+                let fac = 1f32 / (slc.len() as f32).sqrt();
+                for pt in slc {
+                    *pt *= fac;
+                }
+            }
+        }
+
+        {
             let st = state.lock().unwrap();
             let info = view::Info {
                 left: view::ChannelInfo {
                     samples: &st.left.scope[..],
-                    spectrum: &st.left.win[..],
+                    spectrum: &st.left.spec[..],
                 },
                 right: view::ChannelInfo {
                     samples: &st.right.scope[..],
-                    spectrum: &st.right.win[..],
+                    spectrum: &st.right.spec[..],
                 },
             };
 
             scope.render(&info);
+            spec.render(&info);
         }
 
         {
