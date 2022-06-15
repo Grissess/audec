@@ -19,17 +19,15 @@ use rustfft::num_complex::Complex;
 use fifo::Fifo;
 use view::View;
 
-const FPB: u32 = 256;
 const MIN_SAMPS: usize = 256;
 
 #[derive(Debug, Clone)]
 struct ChannelInfo {
     scope: Fifo<f32>,
     win: Fifo<f32>,
-    spec: Vec<Complex<f32>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct State {
     left: ChannelInfo,
     right: ChannelInfo,
@@ -99,7 +97,6 @@ fn main() {
         let ci = ChannelInfo {
             scope: Fifo::new(init_width as usize),
             win: Fifo::new(fft_size),
-            spec: iter::repeat(Complex { re: 0.0, im: 0.0 }).take(fft_size).collect(),
         };
         State {
             left: ci.clone(),
@@ -153,22 +150,26 @@ fn main() {
 
     let mut eloop = sdl.event_pump().expect("creating event loop");
     let mut deadline;
+    let mut lspec: Vec<Complex<f32>> = vec![Complex { re: 0f32, im: 0f32 }; fft_size];
+    let mut rspec: Vec<Complex<f32>> = vec![Complex { re: 0f32, im: 0f32 }; fft_size];
     let rate = Duration::new(1, 0).div_f64(matches.value_of("gfx-rate").unwrap_or("60").parse::<f64>().expect("parsing frame rate"));
     stream.start().expect("starting stream");
     'main: loop {
         deadline = Instant::now() + rate;
 
         {
-            let mut st = state.lock().unwrap();
             for i in 0 ..= 1 {
-                let slc = if i == 0 {
-                    let cplx: Vec<Complex<f32>> = st.left.win.iter().map(|&x| Complex { re: x, im: 0.0 }).collect();
-                    st.left.spec.copy_from_slice(&cplx);
-                    &mut st.left.spec
-                } else {
-                    let cplx: Vec<Complex<f32>> = st.right.win.iter().map(|&x| Complex { re: x, im: 0.0 }).collect();
-                    st.right.spec.copy_from_slice(&cplx);
-                    &mut st.right.spec
+                let slc = {
+                    let mut st = state.lock().unwrap();
+                    if i == 0 {
+                        lspec.clear();
+                        lspec.extend(st.left.win.iter().map(|&x| Complex { re: x, im: 0.0 }));
+                        &mut lspec
+                    } else {
+                        rspec.clear();
+                        rspec.extend(st.right.win.iter().map(|&x| Complex { re: x, im: 0.0 }));
+                        &mut rspec
+                    }
                 };
 
                 for (pt, wv) in slc.iter_mut().zip(win.shape()) {
@@ -183,26 +184,28 @@ fn main() {
             }
         }
 
-        {
+        let stcopy = {
             let st = state.lock().unwrap();
-            let info = view::Info {
-                left: view::ChannelInfo {
-                    samples: &st.left.scope[..],
-                    spectrum: &st.left.spec[..],
-                },
-                right: view::ChannelInfo {
-                    samples: &st.right.scope[..],
-                    spectrum: &st.right.spec[..],
-                },
-                sdl: view::SDLInfo {
-                    ctx: &sdl,
-                    eloop: &eloop,
-                },
-            };
+            st.clone()
+        };
 
-            scope.render(&info);
-            spec.render(&info);
-        }
+        let info = view::Info {
+            left: view::ChannelInfo {
+                samples: &stcopy.left.scope[..],
+                spectrum: &lspec[..],
+            },
+            right: view::ChannelInfo {
+                samples: &stcopy.right.scope[..],
+                spectrum: &rspec[..],
+            },
+            sdl: view::SDLInfo {
+                ctx: &sdl,
+                eloop: &eloop,
+            },
+        };
+
+        scope.render(&info);
+        spec.render(&info);
 
         {
             let mut st = state.lock().unwrap();
