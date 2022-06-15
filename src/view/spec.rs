@@ -2,7 +2,7 @@ use super::{Info, View};
 
 use std::iter;
 
-use sdl2::pixels::Color;
+use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
 use sdl2::video::{Window, WindowContext};
 use sdl2::render::{Canvas, BlendMode, Texture, TextureAccess, TextureCreator};
@@ -23,7 +23,7 @@ impl Spec {
         );
         let tc = self.view.texture_creator();
         let mut wf = tc.create_texture(
-            None,
+            PixelFormatEnum::RGBA8888,
             TextureAccess::Streaming,
             w as u32, h as u32
         ).expect("creating spec backing texture");
@@ -60,6 +60,8 @@ impl View for Spec {
 
         // Move up the waterfall
         self.waterfall_data.as_mut().unwrap().copy_within(width as usize * 4 .., 0);
+        let lw = self.waterfall_data.as_ref().unwrap().len();
+        (&mut self.waterfall_data.as_mut().unwrap()[lw - width as usize * 4 ..]).fill(0u8);
 
         for chan in 0 ..= 1 {
             let spec = if chan == 0 {
@@ -89,13 +91,12 @@ impl View for Spec {
                 if specy < 0 { specy = 0; }
                 {
                     let dc = self.view.draw_color();
-                    let mc = Color::RGBA(
-                        dc.r, dc.g, dc.b,
-                        ((1f32 - (specy as f32 / graph_height as f32)) * 255f32) as u8,
-                    );
-                    (&mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4]).copy_from_slice(
-                        &[mc.a, mc.r, mc.g, mc.b]
-                    );
+                    let a = (1f32 - (specy as f32 / graph_height as f32));
+                    let win = &mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4];
+                    fn lerp(a: u8, b: u8, u: f32) -> u8 {
+                        ((u * a as f32) + ((1f32 - u) * b as f32)) as u8
+                    }
+                    win[1 - chan + 1] = (a * 255f32) as u8;
                 }
                 if x > 0 {
                     self.view.draw_line(
