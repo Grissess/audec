@@ -8,6 +8,23 @@ intended as a FOSS alternative to another proprietary real-time
 waterfall-rendering analyzer often touted by Linux musicians, and attempts to
 loosely emulate its appearance.
 
+## Screenshots
+
+Some music--note the stereo separation, broadband noise, pitch-space mapping...
+
+![scrot1](../doc/scrot1.png)
+
+An example configuration of the lovely [ZynAddSubFX][zyn] soft-synth:
+
+![scrot2](../doc/scrot2.png)
+
+A clipping sine wave with multiple harmonics (note that the views can be
+resized fluidly):
+
+![scrot3](../doc/scrot3.png)
+
+[zyn]: https://zynaddsubfx.sourceforge.io/
+
 ## Requirements
 
 - [Cargo][cargo] (normally part of your Rust toolchain);
@@ -77,9 +94,28 @@ Some known issues, for example:
 - Pure software-rendering of waterfall limits performance;
 - Changing window size dumps historical data;
 - No prebuilt binaries;
+- No changing the default color scheme;
 ... and probably others I'm unaware of.
 
 If you're feeling motivated, [pull requests][ghpr] are also welcome :)
 
 [ghissue]: https://github.com/Grissess/audec/issues
 [ghpr]: https://github.com/Grissess/audec/pulls
+
+## License
+
+This software is hereby released under the "Rust license", which is also known
+as the "dual Apache/MIT license"; specifically, you may choose, at your option:
+
+- [Apache License, Version 2.0][apache2] (mirrored [here][mir-apache2]); or
+- [MIT license][mit] (mirrored [here][mir-mit] with placeholders).
+
+Contributions Submitted for inclusion into the Work by You (as per _supra_
+Apache license) are assumed to comply with the terms of the selfsame Apache
+license without any additional terms or conditions (see _id._, section 5) and
+without patent encumbrance (_id._, section 3).
+
+[apache]: ./LICENSE.APACHE2
+[mir-apache]: https://www.apache.org/licenses/LICENSE-2.0
+[mit]: ./LICENSE.MIT
+[mir-mit]: https://opensource.org/licenses/MIT
