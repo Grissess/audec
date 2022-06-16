@@ -115,7 +115,7 @@ Apache license) are assumed to comply with the terms of the selfsame Apache
 license without any additional terms or conditions (see _id._, section 5) and
 without patent encumbrance (_id._, section 3).
 
-[apache]: ./LICENSE.APACHE2
-[mir-apache]: https://www.apache.org/licenses/LICENSE-2.0
+[apache2]: ./LICENSE.APACHE2
+[mir-apache2]: https://www.apache.org/licenses/LICENSE-2.0
 [mit]: ./LICENSE.MIT
 [mir-mit]: https://opensource.org/licenses/MIT
