@@ -1,11 +1,9 @@
 use super::{Info, View};
 
-use std::iter;
-
 use sdl2::pixels::{Color, PixelFormatEnum};
 use sdl2::rect::Rect;
-use sdl2::video::{Window, WindowContext};
-use sdl2::render::{Canvas, BlendMode, Texture, TextureAccess, TextureCreator};
+use sdl2::video::Window;
+use sdl2::render::{Canvas, BlendMode, Texture, TextureAccess};
 
 pub struct Spec {
     pub view: Canvas<Window>,
@@ -22,7 +20,7 @@ impl Spec {
             vec![0u8; w * h * 4]
         );
         let tc = self.view.texture_creator();
-        let mut wf = tc.create_texture(
+        let wf = tc.create_texture(
             PixelFormatEnum::RGBA8888,
             TextureAccess::Streaming,
             w as u32, h as u32
@@ -90,12 +88,8 @@ impl View for Spec {
                 if specy > graph_height as i32 { specy = graph_height as i32; }
                 if specy < 0 { specy = 0; }
                 {
-                    let dc = self.view.draw_color();
-                    let a = (1f32 - (specy as f32 / graph_height as f32));
+                    let a = 1f32 - (specy as f32 / graph_height as f32);
                     let win = &mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4];
-                    fn lerp(a: u8, b: u8, u: f32) -> u8 {
-                        ((u * a as f32) + ((1f32 - u) * b as f32)) as u8
-                    }
                     win[1 - chan + 1] = (a * 255f32) as u8;
                 }
                 if x > 0 {
@@ -111,12 +105,12 @@ impl View for Spec {
         let mut wf: Texture<'static> = unsafe {
             std::mem::transmute(self.waterfall_tex)
         };
-        wf.update(None, &self.waterfall_data.as_ref().unwrap(), width as usize * 4);
+        wf.update(None, &self.waterfall_data.as_ref().unwrap(), width as usize * 4).expect("uploading");
         self.view.copy(
             &wf,
             None,
             Some(Rect::new(0, 0, width, water_height))
-        );
+        ).expect("blitting");
         std::mem::forget(wf);
 
         self.view.set_blend_mode(BlendMode::None);

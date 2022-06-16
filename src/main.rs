@@ -12,8 +12,6 @@ use std::{iter, thread};
 use std::time::{Instant, Duration};
 use std::sync::{Arc, Mutex};
 use portaudio::stream::{Parameters, InputSettings, CallbackResult, InputCallbackArgs};
-use sdl2::pixels::Color;
-use sdl2::render::BlendMode;
 use sdl2::event::Event;
 use rustfft::num_complex::Complex;
 use fifo::Fifo;
@@ -66,7 +64,7 @@ fn main() {
 
     let didx = if let Some(devname) = matches.value_of("aud-dev") {
         let (didx, _) = pa.devices().expect("listing devices").filter_map(Result::ok)
-            .find(|(didx, info)| info.name == devname)
+            .find(|(_, info)| info.name == devname)
             .expect("finding named device");
         didx
     } else {
@@ -132,7 +130,11 @@ fn main() {
         .resizable()
         .build().expect("creating scope");
     let scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
-    let mut scope = view::scope::Scope { view: scope_can };
+    let mut scope = view::scope::Scope {
+        view: scope_can,
+        zc_search: 1024,
+        zc_horiz: 0.5f32,
+    };
 
     let spec_win = sdl_video.window("spec", init_width, init_height)
         .position_centered()
@@ -160,7 +162,7 @@ fn main() {
         {
             for i in 0 ..= 1 {
                 let slc = {
-                    let mut st = state.lock().unwrap();
+                    let st = state.lock().unwrap();
                     if i == 0 {
                         lspec.clear();
                         lspec.extend(st.left.win.iter().map(|&x| Complex { re: x, im: 0.0 }));
