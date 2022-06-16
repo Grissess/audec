@@ -46,6 +46,12 @@ fn main() {
         }
         return;
     }
+    if matches.is_present("list-api") {
+        for (idx, api) in pa.host_apis() {
+            println!("{}: {} ({:?})", idx, api.name, api);
+        }
+        return;
+    }
     if matches.is_present("list-dev") {
         for dev in pa.devices().expect("listing devices") {
             if let Ok((idx, info)) = dev {
@@ -59,8 +65,10 @@ fn main() {
         return;
     }
 
-    let init_width: u32 = matches.value_of("sco-width").unwrap_or("800").parse().expect("getting scope initial width");
-    let init_height: u32 = matches.value_of("sco-height").unwrap_or("200").parse().expect("getting scope initial height");
+    let init_sco_width: u32 = matches.value_of("sco-width").unwrap_or("800").parse().expect("getting scope initial width");
+    let init_sco_height: u32 = matches.value_of("sco-height").unwrap_or("200").parse().expect("getting scope initial height");
+    let init_spec_width: u32 = matches.value_of("spec-width").unwrap_or("800").parse().expect("getting spectrogram initial width");
+    let init_spec_height: u32 = matches.value_of("spec-height").unwrap_or("600").parse().expect("getting spectrogram initial height");
 
     let didx = if let Some(devname) = matches.value_of("aud-dev") {
         let (didx, _) = pa.devices().expect("listing devices").filter_map(Result::ok)
@@ -93,7 +101,7 @@ fn main() {
         .collect();
     let state = Arc::new(Mutex::new({
         let ci = ChannelInfo {
-            scope: Fifo::new(init_width as usize),
+            scope: Fifo::new(init_sco_width as usize),
             win: Fifo::new(fft_size),
         };
         State {
@@ -125,27 +133,27 @@ fn main() {
     let sdl = sdl2::init().expect("initializing SDL");
     let sdl_video = sdl.video().expect("initializing SDL video");
 
-    let scope_win = sdl_video.window("scope", init_width, init_height)
+    let scope_win = sdl_video.window("scope", init_sco_width, init_sco_height)
         .position_centered()
         .resizable()
         .build().expect("creating scope");
     let scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
     let mut scope = view::scope::Scope {
         view: scope_can,
-        zc_search: 1024,
-        zc_horiz: 0.5f32,
+        zc_search: matches.value_of("sco-search").unwrap_or("1024").parse().expect("getting scope search"),
+        zc_horiz: matches.value_of("sco-pos").unwrap_or("0.5").parse().expect("getting scope zc pos"),
     };
 
-    let spec_win = sdl_video.window("spec", init_width, init_height)
+    let spec_win = sdl_video.window("spec", init_spec_width, init_spec_height)
         .position_centered()
         .resizable()
         .build().expect("creating spec");
     let spec_can = spec_win.into_canvas().build().expect("creating spec canvas");
     let mut spec = view::spec::Spec {
         view: spec_can,
-        db_bias: -5f32,
-        db_range: 30f32,
-        waterfall_sz: 0.8f32,
+        db_bias: matches.value_of("spec-bias").unwrap_or("-5.0").parse().expect("getting spectrogram bias"),
+        db_range: matches.value_of("spec-range").unwrap_or("30.0").parse().expect("getting spectrogram range"),
+        waterfall_sz: matches.value_of("spec-water-size").unwrap_or("0.8").parse().expect("getting spectrogam waterfall size"),
         waterfall_data: None,
         waterfall_tex: std::ptr::null_mut(),
     };

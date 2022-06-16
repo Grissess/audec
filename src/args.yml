@@ -6,12 +6,12 @@ args:
     - fft-size:
         long: fft-size
         short: s
-        help: Size of the FFT window
+        help: Size of the FFT window (default 1024)
         takes_value: true
     - fft-win:
         long: fft-win
         short: w
-        help: FFT window function (--list-win to list)
+        help: FFT window function (--list-win to list, default hann)
         takes_value: true
     - list-win:
         long: list-win
@@ -19,25 +19,28 @@ args:
     - aud-rate:
         long: aud-rate
         short: r
-        help: Sample rate of the audio stream
+        help: Sample rate of the audio stream (default is the device's default)
         takes_value: true
     - aud-period:
         long: aud-period
         short: p
-        help: Period size of the audio stream (lower for less latency but higher CPU usage)
+        help: Period size of the audio stream (lower for less latency but higher CPU usage; default is 256)
         takes_value: true
     - aud-dev:
         long: aud-dev
         short: d
-        help: Audio device to use (--list-dev to list)
+        help: Audio device to use (--list-dev to list, default is host default)
         takes_value: true
     - list-dev:
         long: list-dev
         help: Instead of doing anything else, show audio devices
+    - list-api:
+        long: list-api
+        help: Instead of doing anything else, show audio apis
     - gfx-rate:
         long: gfx-rate
         short: f
-        help: Framerate of graphics updates (in Hz)
+        help: Framerate of graphics updates (in Hz, default 60)
         takes_value: true
     - sco-width:
         long: sco-width
@@ -46,4 +49,32 @@ args:
     - sco-height:
         long: sco-height
         help: Initial height of the scope window
+        takes_value: true
+    - sco-search:
+        long: sco-search
+        help: Number of sample to search for a zero crossing (0 disables, default 1024)
+        takes_value: true
+    - sco-pos:
+        long: sco-pos
+        help: Position of zero crossing indicator relative to scope width (0.0-1.0, default 0.5)
+        takes_value: true
+    - spec-width:
+        long: spec-width
+        help: Initial width of the spectrogram window
+        takes_value: true
+    - spec-height:
+        long: spec-height
+        help: Initial height of the spectrogram window
+        takes_value: true
+    - spec-bias:
+        long: spec-bias
+        help: Bias of the spectrogram level (dB, default -5)
+        takes_value: true
+    - spec-range:
+        long: spec-range
+        help: Range of displayed spectrogram levels (dB, default 30)
+        takes_value: true
+    - spec-water-size:
+        long: spec-water-size
+        help: Display size of the waterfall (relative to whole spectral window; 0.0 to 1.0, default 0.8)
         takes_value: true

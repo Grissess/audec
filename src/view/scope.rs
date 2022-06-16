@@ -31,7 +31,7 @@ impl View for Scope {
             .filter(|&i| zc_mark + i < winsz)
             .map(|i| (i, zc_mark + i, info.left.samples[zc_mark + i], info.right.samples[zc_mark + i]))
             .scan(None,
-                  |state, (i, ai, l, r)| {
+                  |state, (i, _ai, l, r)| {
                       count += 1;
                       let en = l.abs() + r.abs();
                       let sm = l + r;
