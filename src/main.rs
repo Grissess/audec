@@ -13,6 +13,7 @@ use std::time::{Instant, Duration};
 use std::sync::{Arc, Mutex};
 use portaudio::stream::{Parameters, InputSettings, CallbackResult, InputCallbackArgs};
 use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 use rustfft::num_complex::Complex;
 use fifo::Fifo;
 use view::View;
@@ -190,6 +191,7 @@ fn main() {
     stream.start().expect("starting stream");
     'main: loop {
         deadline = Instant::now() + rate;
+        hprof::start_frame();
 
         {
             for i in 0 ..= 1 {
@@ -252,9 +254,15 @@ fn main() {
             }
         }
 
+        hprof::end_frame();
+
         for event in eloop.poll_iter() {
             match event {
-                Event::Quit {..} => break 'main,
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'main,
                 _ => (),
             }
         }
@@ -265,4 +273,5 @@ fn main() {
         }
         // println!("tick");
     }
+    hprof::profiler().print_timing();
 }

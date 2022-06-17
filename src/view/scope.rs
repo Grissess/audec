@@ -17,7 +17,8 @@ pub struct Scope {
 
 impl View for Scope {
     fn render<'i, 's, 'j: 'i + 's>(&mut self, info: &'j Info<'i, 's>) {
-        self.view.set_draw_color(Color::RGB(0,0,0));
+        let _g = hprof::enter("Scope::render");
+        self.view.set_draw_color(Color::RGB(0, 0, 0));
         self.view.clear();
         self.view.set_blend_mode(BlendMode::Add);
         let (width, height) = self.view.output_size().expect("getting size");
@@ -106,6 +107,7 @@ impl View for Scope {
             }
         }
 
+        drop(_g);
 
         self.view.set_blend_mode(BlendMode::None);
         self.view.present();

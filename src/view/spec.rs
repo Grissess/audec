@@ -16,9 +16,8 @@ pub struct Spec {
 
 impl Spec {
     fn rebuild_texture(&mut self, w: usize, h: usize) {
-        self.waterfall_data = Some(
-            vec![0u8; w * h * 4]
-        );
+        let _g = hprof::enter("rebuild_texture");
+        self.waterfall_data = Some(vec![0u8; w * h * 4]);
         let tc = self.view.texture_creator();
         let wf = tc.create_texture(
             PixelFormatEnum::RGBA8888,
@@ -35,6 +34,7 @@ impl Spec {
 
 impl View for Spec {
     fn render<'i, 's, 'j: 'i + 's>(&mut self, info: &'j Info<'i, 's>) {
+        let _g = hprof::enter("Spec::render");
         let (width, height) = self.view.output_size().expect("getting size");
 
         let bias = self.db_bias / 10f32;
@@ -57,7 +57,11 @@ impl View for Spec {
         self.view.set_blend_mode(BlendMode::Add);
 
         // Move up the waterfall
-        self.waterfall_data.as_mut().unwrap().copy_within(width as usize * 4 .., 0);
+        let g2 = hprof::enter("waterfall");
+        self.waterfall_data
+            .as_mut()
+            .unwrap()
+            .copy_within(width as usize * 4.., 0);
         let lw = self.waterfall_data.as_ref().unwrap().len();
         (&mut self.waterfall_data.as_mut().unwrap()[lw - width as usize * 4 ..]).fill(0u8);
 
@@ -72,7 +76,8 @@ impl View for Spec {
 
             let mut last_y = 0i32;
             let wd_offset = water_y as usize * width as usize * 4;
-            for x in 0 .. width {
+            for x in 0..width {
+                let nonsdl = hprof::enter("inner loop");
                 // Since this is an RFFT, only half the spec is useful
                 let normx = x as f32 / width as f32;
                 //let specidx = (normx * spec.len() as f32 / 2f32) as usize;
@@ -92,6 +97,7 @@ impl View for Spec {
                     let win = &mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4];
                     win[1 - chan + 1] = (a * 255f32) as u8;
                 }
+                drop(nonsdl);
                 if x > 0 {
                     self.view.draw_line(
                         ((x - 1) as i32, last_y),
@@ -102,16 +108,21 @@ impl View for Spec {
             }
         }
 
-        let mut wf: Texture<'static> = unsafe {
-            std::mem::transmute(self.waterfall_tex)
-        };
-        wf.update(None, &self.waterfall_data.as_ref().unwrap(), width as usize * 4).expect("uploading");
-        self.view.copy(
-            &wf,
+        drop(g2);
+
+        let mut wf: Texture<'static> = unsafe { std::mem::transmute(self.waterfall_tex) };
+        wf.update(
             None,
-            Some(Rect::new(0, 0, width, water_height))
-        ).expect("blitting");
+            &self.waterfall_data.as_ref().unwrap(),
+            width as usize * 4,
+        )
+        .expect("uploading");
+        self.view
+            .copy(&wf, None, Some(Rect::new(0, 0, width, water_height)))
+            .expect("blitting");
         std::mem::forget(wf);
+
+        drop(_g);
 
         self.view.set_blend_mode(BlendMode::None);
         self.view.present();
