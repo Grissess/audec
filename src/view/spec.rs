@@ -65,47 +65,40 @@ impl View for Spec {
         let lw = self.waterfall_data.as_ref().unwrap().len();
         (&mut self.waterfall_data.as_mut().unwrap()[lw - width as usize * 4 ..]).fill(0u8);
 
-        for chan in 0 ..= 1 {
-            let spec = if chan == 0 {
-                self.view.set_draw_color(Color::RGB(0,255,0));
-                &info.left.spectrum
-            } else {
-                self.view.set_draw_color(Color::RGB(0,0,255));
-                &info.right.spectrum
-            };
+        let mut spectrums = Vec::with_capacity(info.left.len() * 2);
+        spectrums.extend_from_slice(&info.left);
+        spectrums.extend_from_slice(&info.right);
+        let spectrums: Vec<shaders::Vec2> = spectrums.into_iter().map(|c| shaders::Vec2::new(c.re, c.im)).collect();
 
+        let (width, height) = self.view.output_size().expect("getting size");
+
+        let bias = self.db_bias / 10f32;
+        let range = self.db_range / 10f32;
+        
+        let water_height = (self.waterfall_sz * height as f32) as u32;
+        let water_y = water_height - 1;
+        let graph_height = height - water_height;
+         
+        
+        for chan in 0 ..= 1 {
             let mut last_y = 0i32;
             let wd_offset = water_y as usize * width as usize * 4;
             for x in 0..width {
                 let nonsdl = hprof::enter("inner loop");
-                // Since this is an RFFT, only half the spec is useful
-                let normx = x as f32 / width as f32;
-                //let specidx = (normx * spec.len() as f32 / 2f32) as usize;
-                let specidx = ((2f32.powf(normx) - 1f32) * spec.len() as f32 / 2f32) as usize;
-                let specval = spec[specidx].norm();
-                let specval = if specval == 0.0 {
-                    -1000.0
-                } else {
-                    specval.log10()
-                };
-                // println!("debug: wh {} bias {} gh {} range {} specval {}", water_height as i32, bias, graph_height as f32, range, specval);
-                let mut specy = ((bias + specval) * -(graph_height as f32) / range) as i32;
-                if specy > graph_height as i32 { specy = graph_height as i32; }
-                if specy < 0 { specy = 0; }
-                {
-                    let a = 1f32 - (specy as f32 / graph_height as f32);
-                    let win = &mut self.waterfall_data.as_mut().unwrap()[wd_offset + x as usize * 4 .. wd_offset + (x+1) as usize * 4];
-                    win[1 - chan + 1] = (a * 255f32) as u8;
-                }
-                drop(nonsdl);
-                if x > 0 {
-                    self.view.draw_line(
-                        ((x - 1) as i32, last_y),
-                        (x as i32, water_height as i32 + specy)
-                    ).expect("drawing");
-                }
-                last_y = water_height as i32 + specy;
+    
+                shaders::spectrogram_line( UVec3::new(x, chan, 0), &shaders::Spectrogram {
+                    bias,
+                    range,
+                    width,
+                    height,
+                    water_height,
+                    water_y,
+                    graph_height,
+                    wd_offset,
+                    spectrum_length: info.left.spectrum.len() as u32,
+                }, &mut spectrums, &mut img);
             }
+
         }
 
         drop(g2);

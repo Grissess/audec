@@ -7,6 +7,7 @@ extern crate sdl2;
 mod window;
 mod fifo;
 mod view;
+mod vulkan;
 
 use std::{iter, thread};
 use std::time::{Instant, Duration};
