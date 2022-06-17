@@ -13,7 +13,9 @@ pub struct Vector {
 
 impl View for Vector {
     fn render<'i, 's, 'j: 'i + 's>(&mut self, info: &'j Info<'i, 's>) {
-        self.view.set_draw_color(Color::RGBA(0,0,0,self.fade_rate));
+        let _g = hprof::enter("Vector::render");
+        self.view
+            .set_draw_color(Color::RGBA(0, 0, 0, self.fade_rate));
         self.view.set_blend_mode(BlendMode::None);
         self.view.fill_rect(None).expect("clearing");
 
@@ -32,6 +34,8 @@ impl View for Vector {
             }
             lastpt = Some((x, y));
         }
+
+        drop(_g);
 
         self.view.present();
     }
