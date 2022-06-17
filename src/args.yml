@@ -42,13 +42,16 @@ args:
         short: f
         help: Framerate of graphics updates (in Hz, default 60)
         takes_value: true
+    - no-sco:
+        long: no-sco
+        help: Disable the oscilloscope window
     - sco-width:
         long: sco-width
-        help: Initial width of the scope window
+        help: Initial width of the oscilloscope window
         takes_value: true
     - sco-height:
         long: sco-height
-        help: Initial height of the scope window
+        help: Initial height of the oscilloscope window
         takes_value: true
     - sco-search:
         long: sco-search
@@ -56,8 +59,11 @@ args:
         takes_value: true
     - sco-pos:
         long: sco-pos
-        help: Position of zero crossing indicator relative to scope width (0.0-1.0, default 0.5)
+        help: Position of zero crossing indicator relative to oscilloscope width (0.0-1.0, default 0.5)
         takes_value: true
+    - no-spec:
+        long: no-spec
+        help: Disable the spectrum window
     - spec-width:
         long: spec-width
         help: Initial width of the spectrogram window
@@ -77,4 +83,23 @@ args:
     - spec-water-size:
         long: spec-water-size
         help: Display size of the waterfall (relative to whole spectral window; 0.0 to 1.0, default 0.8)
+        takes_value: true
+    - no-vec:
+        long: no-vec
+        help: Disable the vectorscope window
+    - vec-width:
+        long: vec-width
+        help: Width of the vectorscope window
+        takes_value: true
+    - vec-height:
+        long: vec-height
+        help: Height of the vectorscope window
+        takes_value: true
+    - vec-fade:
+        long: vec-fade
+        help: Vectorscope fade rate (0 disables - 255 clears instantly)
+        takes_value: true
+    - vec-brightness:
+        long: vec-brightness
+        help: Vectorscope brightness (0 no change - 255 maximum intensity)
         takes_value: true

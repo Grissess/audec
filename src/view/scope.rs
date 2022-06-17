@@ -4,7 +4,7 @@ use sdl2::pixels::Color;
 use sdl2::video::Window;
 use sdl2::render::{Canvas, BlendMode};
 
-fn normalize_centered(samp: f32, height: u32) -> i32 {
+pub fn normalize_centered(samp: f32, height: u32) -> i32 {
     let hh = height / 2;
     hh as i32 - (hh as f32 * samp) as i32
 }

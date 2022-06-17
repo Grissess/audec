@@ -1,5 +1,6 @@
 pub mod scope;
 pub mod spec;
+pub mod vec;
 
 use rustfft::num_complex::Complex;
 

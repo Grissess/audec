@@ -69,6 +69,8 @@ fn main() {
     let init_sco_height: u32 = matches.value_of("sco-height").unwrap_or("200").parse().expect("getting scope initial height");
     let init_spec_width: u32 = matches.value_of("spec-width").unwrap_or("800").parse().expect("getting spectrogram initial width");
     let init_spec_height: u32 = matches.value_of("spec-height").unwrap_or("600").parse().expect("getting spectrogram initial height");
+    let init_vec_width: u32 = matches.value_of("vec-width").unwrap_or("400").parse().expect("getting vectorscope initial width");
+    let init_vec_height: u32 = matches.value_of("vec-height").unwrap_or("400").parse().expect("getting vectorscope initial height");
 
     let didx = if let Some(devname) = matches.value_of("aud-dev") {
         let (didx, _) = pa.devices().expect("listing devices").filter_map(Result::ok)
@@ -133,30 +135,52 @@ fn main() {
     let sdl = sdl2::init().expect("initializing SDL");
     let sdl_video = sdl.video().expect("initializing SDL video");
 
-    let scope_win = sdl_video.window("scope", init_sco_width, init_sco_height)
-        .position_centered()
-        .resizable()
-        .build().expect("creating scope");
-    let scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
-    let mut scope = view::scope::Scope {
-        view: scope_can,
-        zc_search: matches.value_of("sco-search").unwrap_or("1024").parse().expect("getting scope search"),
-        zc_horiz: matches.value_of("sco-pos").unwrap_or("0.5").parse().expect("getting scope zc pos"),
-    };
+    let mut views: Vec<Box<dyn View>> = Vec::new();
 
-    let spec_win = sdl_video.window("spec", init_spec_width, init_spec_height)
-        .position_centered()
-        .resizable()
-        .build().expect("creating spec");
-    let spec_can = spec_win.into_canvas().build().expect("creating spec canvas");
-    let mut spec = view::spec::Spec {
-        view: spec_can,
-        db_bias: matches.value_of("spec-bias").unwrap_or("-5.0").parse().expect("getting spectrogram bias"),
-        db_range: matches.value_of("spec-range").unwrap_or("30.0").parse().expect("getting spectrogram range"),
-        waterfall_sz: matches.value_of("spec-water-size").unwrap_or("0.8").parse().expect("getting spectrogam waterfall size"),
-        waterfall_data: None,
-        waterfall_tex: std::ptr::null_mut(),
-    };
+    if !matches.is_present("no-sco") {
+        let scope_win = sdl_video.window("scope", init_sco_width, init_sco_height)
+            .position_centered()
+            .resizable()
+            .build().expect("creating scope");
+        let scope_can = scope_win.into_canvas().build().expect("creating scope canvas");
+        let scope = view::scope::Scope {
+            view: scope_can,
+            zc_search: matches.value_of("sco-search").unwrap_or("1024").parse().expect("getting scope search"),
+            zc_horiz: matches.value_of("sco-pos").unwrap_or("0.5").parse().expect("getting scope zc pos"),
+        };
+        views.push(Box::new(scope));
+    }
+
+    if !matches.is_present("no-spec") {
+        let spec_win = sdl_video.window("spec", init_spec_width, init_spec_height)
+            .position_centered()
+            .resizable()
+            .build().expect("creating spec");
+        let spec_can = spec_win.into_canvas().build().expect("creating spec canvas");
+        let spec = view::spec::Spec {
+            view: spec_can,
+            db_bias: matches.value_of("spec-bias").unwrap_or("-5.0").parse().expect("getting spectrogram bias"),
+            db_range: matches.value_of("spec-range").unwrap_or("30.0").parse().expect("getting spectrogram range"),
+            waterfall_sz: matches.value_of("spec-water-size").unwrap_or("0.8").parse().expect("getting spectrogam waterfall size"),
+            waterfall_data: None,
+            waterfall_tex: std::ptr::null_mut(),
+        };
+        views.push(Box::new(spec));
+    }
+
+    if !matches.is_present("no-vec") {
+        let vec_win = sdl_video.window("vec", init_vec_width, init_vec_height)
+            .position_centered()
+            .resizable()
+            .build().expect("creating vec");
+        let vec_can = vec_win.into_canvas().build().expect("creating vec canvas");
+        let vec = view::vec::Vector {
+            view: vec_can,
+            fade_rate: matches.value_of("vec-fade").unwrap_or("32").parse().expect("getting vec fade"),
+            brightness: matches.value_of("vec-brightness").unwrap_or("32").parse().expect("getting vec brightness"),
+        };
+        views.push(Box::new(vec));
+    }
 
     let mut eloop = sdl.event_pump().expect("creating event loop");
     let mut deadline;
@@ -214,13 +238,14 @@ fn main() {
             },
         };
 
-        scope.render(&info);
-        spec.render(&info);
+        let mut winsz = MIN_SAMPS;
+        for view in &mut views {
+            view.render(&info);
+            winsz = std::cmp::max(winsz, view.requested_window());
+        }
 
         {
             let mut st = state.lock().unwrap();
-            let mut winsz = MIN_SAMPS;
-            winsz = std::cmp::max(winsz, scope.requested_window());
             if winsz != st.left.scope.size() {
                 st.left.scope.resize(winsz);
                 st.right.scope.resize(winsz);
