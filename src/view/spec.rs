@@ -65,9 +65,9 @@ impl View for Spec {
         let lw = self.waterfall_data.as_ref().unwrap().len();
         (&mut self.waterfall_data.as_mut().unwrap()[lw - width as usize * 4 ..]).fill(0u8);
 
-        let mut spectrums = Vec::with_capacity(info.left.len() * 2);
-        spectrums.extend_from_slice(&info.left);
-        spectrums.extend_from_slice(&info.right);
+        let mut spectrums = Vec::with_capacity(info.left.spectrum.len() * 2);
+        spectrums.extend_from_slice(&info.left.spectrum);
+        spectrums.extend_from_slice(&info.right.spectrum);
         let spectrums: Vec<shaders::Vec2> = spectrums.into_iter().map(|c| shaders::Vec2::new(c.re, c.im)).collect();
 
         let (width, height) = self.view.output_size().expect("getting size");
@@ -78,15 +78,14 @@ impl View for Spec {
         let water_height = (self.waterfall_sz * height as f32) as u32;
         let water_y = water_height - 1;
         let graph_height = height - water_height;
-         
-        
+        let wd_offset = water_y as usize * width as usize * 4;
+
+        let _nonsdl = hprof::enter("inner loop");
+
         for chan in 0 ..= 1 {
-            let mut last_y = 0i32;
-            let wd_offset = water_y as usize * width as usize * 4;
             for x in 0..width {
-                let nonsdl = hprof::enter("inner loop");
     
-                shaders::spectrogram_line( UVec3::new(x, chan, 0), &shaders::Spectrogram {
+                shaders::spectrogram_line( shaders::UVec3::new(x, chan, 0), &shaders::Spectrogram {
                     bias,
                     range,
                     width,
@@ -94,13 +93,14 @@ impl View for Spec {
                     water_height,
                     water_y,
                     graph_height,
-                    wd_offset,
+                    wd_offset: wd_offset as u32,
                     spectrum_length: info.left.spectrum.len() as u32,
-                }, &mut spectrums, &mut img);
+                }, & spectrums, self.waterfall_data.as_mut().unwrap());
             }
 
         }
 
+        drop(_nonsdl);
         drop(g2);
 
         let mut wf: Texture<'static> = unsafe { std::mem::transmute(self.waterfall_tex) };
