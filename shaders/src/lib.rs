@@ -80,12 +80,14 @@ pub fn spectrogram_line(
         let count = cutoff.abs();
         let s = cutoff.signum();
         for y in 0..count*2 {
-            let xoff = if y > count { id.x as usize * 4 } else { id.x as usize - 1 * 4};
-            let pxy = (sp.water_height as usize + prev_specy as usize + (s * y) as usize) * sp.width as usize * 4 + xoff;
-            let win = &mut image_out[pxy..pxy + 4];
-            win[1] = chan_color[2];
-            win[2] = chan_color[1];
-            win[3] = chan_color[0];
+            let xoff = if y > count { id.x as usize * 4 } else { (id.x as usize - 1) * 4 };
+            let pxy = (sp.water_height as usize + prev_specy as usize).wrapping_add((s * y) as usize) * sp.width as usize * 4 + xoff;
+            if pxy + 4 < image_out.len() {  // Seems to happen when the window resizes for at least a frame
+                let win = &mut image_out[pxy..pxy + 4];
+                win[1] = chan_color[2];
+                win[2] = chan_color[1];
+                win[3] = chan_color[0];
+            }
         }
     }
 }
