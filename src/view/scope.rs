@@ -13,6 +13,7 @@ pub struct Scope {
     pub view: Canvas<Window>,
     pub zc_search: usize,
     pub zc_horiz: f32,
+    pub pow: f32,
 }
 
 impl View for Scope {
@@ -79,6 +80,11 @@ impl View for Scope {
             };
 
             let mut last_samp = 0.0f32;
+            let mapped: Box<dyn Fn(f32) -> f32> = if self.pow == 1.0 {
+                Box::new(|x| x)
+            } else {
+                Box::new(|x| x.signum() * x.abs().powf(self.pow))
+            };
             for (x, samp) in samps.iter().skip(offset).cloned().enumerate() {
                 /*
                 let ix = x + offset;
@@ -99,8 +105,8 @@ impl View for Scope {
                         }
                     );
                     self.view.draw_line(
-                        ((x - 1) as i32, normalize_centered(last_samp, height)),
-                        (x as i32, normalize_centered(samp, height))
+                        ((x - 1) as i32, normalize_centered(mapped(last_samp), height)),
+                        (x as i32, normalize_centered(mapped(samp), height))
                     ).expect("drawing");
                 }
                 last_samp = samp;

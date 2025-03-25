@@ -31,6 +31,10 @@ args:
         short: d
         help: Audio device to use (--list-dev to list, default is host default)
         takes_value: true
+    - aud-scale:
+        long: aud-scale
+        help: Factor by which to scale every sample (default 1.0)
+        takes_value: true
     - list-dev:
         long: list-dev
         help: Instead of doing anything else, show audio devices
@@ -60,6 +64,10 @@ args:
     - sco-pos:
         long: sco-pos
         help: Position of zero crossing indicator relative to oscilloscope width (0.0-1.0, default 0.5)
+        takes_value: true
+    - sco-pow:
+        long: sco-pow
+        help: Power (wave-shaping) applied to rendered samples in the scope view (default 1.0--no shaping)
         takes_value: true
     - no-spec:
         long: no-spec

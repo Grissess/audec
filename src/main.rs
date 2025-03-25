@@ -117,6 +117,7 @@ fn main() {
         settings,
         {
             let st = state.clone();
+            let scale: f32 = matches.value_of("aud-scale").unwrap_or("1.0").parse().expect("getting audio scale");
             let mut scratch: Vec<f32> = Vec::with_capacity(32768);
             move |InputCallbackArgs {buffer, frames, ..}| {
                 let mut state = st.lock().unwrap();
@@ -125,6 +126,11 @@ fn main() {
                     let ifo = if offs == 0 { &mut state.left } else { &mut state.right };
                     scratch.clear();
                     scratch.extend(buffer.chunks(2).map(|s| s[offs]));
+                    if scale != 1.0 {
+                        for samp in scratch.iter_mut() {
+                            *samp *= scale;
+                        }
+                    }
                     ifo.scope.push(&scratch);
                     ifo.win.push(&scratch);
                 }
@@ -148,6 +154,7 @@ fn main() {
             view: scope_can,
             zc_search: matches.value_of("sco-search").unwrap_or("1024").parse().expect("getting scope search"),
             zc_horiz: matches.value_of("sco-pos").unwrap_or("0.5").parse().expect("getting scope zc pos"),
+            pow: matches.value_of("sco-pow").unwrap_or("1.0").parse().expect("getting scope pow"),
         };
         views.push(Box::new(scope));
     }
